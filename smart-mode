@@ -1,0 +1,41 @@
+#!/bin/sh
+
+set -eu
+
+usage() {
+    echo 'usage: smart-mode [-h] DEVICE...
+
+List power mode of devices.'
+}
+
+print_mode() {
+    status="$(smartctl -in standby,0 "$1" | tail -n +4)"
+
+    if mode="$(echo "$status" | grep 'Power mode is:')"; then
+        echo "Device is in ${mode##*:    } mode"
+    else
+        echo "${status%%,*}"
+    fi
+}
+
+if [ $# -eq 0 ]; then
+    usage >&2
+    exit 2
+elif [ "$1" = '-h' ]; then
+    usage
+    exit
+elif [ "$(id -u)" -ne 0 ]; then
+    echo 'root permission required' >&2
+    exit 1
+fi
+
+r=0
+for dev in "$@"; do
+    if [ -b "$dev" ]; then
+        echo "$dev: $(print_mode "$dev")"
+    else
+        echo "$dev is not a block device" >&2
+        r=$((r + 1))
+    fi
+done
+exit $r

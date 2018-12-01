@@ -1,0 +1,55 @@
+#!/bin/sh
+
+set -eu
+
+usage() {
+    echo 'usage: smart-writes [options] DEVICE...
+
+Calculate total writes to devices.
+Default unit is gigabytes.
+
+options:
+  -h  Show help message
+  -b  Print bytes written
+  -m  Print megabytes written
+  -t  Print terabytes written'
+}
+
+print_writes() {
+    smartctl -a "$1" | awk -v conv="$2" '/^Sector Size:/ {size=$3}
+/^241/ {print $10 * size * conv}'
+}
+
+power='9'
+unit='GB'
+
+while getopts ':hbmt' opt; do
+    case "$opt" in
+        h) usage; exit ;;
+        b) power='1'; unit='B' ;;
+        m) power='6'; unit='MB' ;;
+        t) power='12'; unit='TB' ;;
+        *) usage >&2; exit 2
+    esac
+done
+
+shift $((OPTIND - 1))
+
+if [ $# -eq 0 ]; then
+    usage >&2
+    exit 2
+elif [ "$(id -u)" -ne 0 ]; then
+    echo 'root permission required' >&2
+    exit 1
+fi
+
+r=0
+for dev in "$@"; do
+    if [ -b "$dev" ]; then
+        echo "$dev: $(print_writes "$dev" "1e-$power") $unit"
+    else
+        echo "$dev is not a block device" >&2
+        r=$((r + 1))
+    fi
+done
+exit $r
