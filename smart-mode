@@ -9,7 +9,7 @@ List power mode of devices.'
 }
 
 print_mode() {
-    status="$(smartctl -in standby,0 "$1" | tail -n +4)"
+    status="$(sudo smartctl -in standby,0 "$1" | tail -n +4)"
 
     if mode="$(echo "$status" | grep 'Power mode is:')"; then
         echo "Device is in ${mode##*:    } mode"
@@ -24,9 +24,6 @@ if [ $# -eq 0 ]; then
 elif [ "$1" = '-h' ]; then
     usage
     exit
-elif [ "$(id -u)" -ne 0 ]; then
-    echo 'root permission required' >&2
-    exit 1
 fi
 
 r=0
